@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run test
+      - run: bun run build
+      - name: Verify Kuromoji dictionary assets (exact browser request names)
+        run: |
+          for f in base check tid tid_pos tid_map cc unk unk_pos unk_map unk_char unk_compat unk_invoke; do
+            OUT=$(find .output dist -path "*kuromoji-dict/$f.dat.bin" 2>/dev/null | head -1)
+            test -n "$OUT" || { echo "missing $f.dat.bin"; exit 1; }
+            cmp "$OUT" "node_modules/kuromoji/dict/$f.dat.gz"
+          done
+      - run: bun run lint
